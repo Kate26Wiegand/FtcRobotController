@@ -61,6 +61,14 @@ public class BioBuzzStarterbotTeleopMecanum extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
+
+            // If you press the start button, then you reset the Yaw to be zero from the way
+            // the robot is currently pointing
+            if (gamepad1.start) {
+                robot.resetYaw();
+            }
+
+
             /*
              * Here we call a function called mecanumDrive. The mecanumDrive function takes the input from
              * the joysticks, and applies power to the drive motors to move the robot as requested
@@ -71,7 +79,14 @@ public class BioBuzzStarterbotTeleopMecanum extends LinearOpMode {
              * Note, moving the joystick forward on most gamepads results in a negative signal, so
              * we invert it before passing it to the function.
              */
-            robot.mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+
+            // If you press the left bumper, you get a drive from the point of view of the robot
+            // (much like driving an RC vehicle)
+            if (gamepad1.left_bumper) {
+                robot.mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+            } else {
+                robot.driveFieldRelative(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+            }
 
 
             robot.launch(gamepad1.right_bumper);

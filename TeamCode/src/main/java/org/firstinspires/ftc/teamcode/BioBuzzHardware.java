@@ -31,15 +31,19 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 
 /*
@@ -106,6 +110,9 @@ public class BioBuzzHardware {
 
     // Create a variable to set to the intake.
     double intakePower;
+
+    IMU imu;
+
 
     // Define a constructor that allows the OpMode to pass a reference to itself.
     public BioBuzzHardware(LinearOpMode opmode) {
@@ -176,11 +183,24 @@ public class BioBuzzHardware {
         rightIntakeServo.setDirection(DcMotorSimple.Direction.REVERSE);
         windmillServo.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        imu = myOpMode.hardwareMap.get(IMU.class, "imu");
+        // This needs to be changed to match the orientation on your robot
+        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
+                RevHubOrientationOnRobot.LogoFacingDirection.UP;
+        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
+
+        RevHubOrientationOnRobot orientationOnRobot = new
+                RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
+
         myOpMode.telemetry.addData("Status", "Initialized");
         myOpMode.telemetry.update();
     }
 
-
+    public void resetYaw() {
+        imu.resetYaw();
+    }
 
 
 
@@ -220,6 +240,24 @@ public class BioBuzzHardware {
          */
         myOpMode.telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftFrontPower, rightFrontPower);
         myOpMode.telemetry.addData("Triggers", "left (%.2f, right (%.2f)", myOpMode.gamepad1.left_trigger, myOpMode.gamepad1.right_trigger);
+    }
+
+    // This routine drives the robot field relative
+    public void driveFieldRelative(double forward, double right, double rotate) {
+        // First, convert direction being asked to drive to polar coordinates
+        double theta = Math.atan2(forward, right);
+        double r = Math.hypot(right, forward);
+
+        // Second, rotate angle by the angle the robot is pointing
+        theta = AngleUnit.normalizeRadians(theta -
+                imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
+
+        // Third, convert back to cartesian
+        double newForward = r * Math.sin(theta);
+        double newRight = r * Math.cos(theta);
+
+        // Finally, call the drive method with robot relative forward and right amounts
+        mecanumDrive(newForward, newRight, rotate);
     }
 
     void launch(boolean doLaunch) {
