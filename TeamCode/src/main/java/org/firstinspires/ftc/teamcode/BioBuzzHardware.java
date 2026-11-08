@@ -80,14 +80,25 @@ public class BioBuzzHardware {
 
     // Define Drive constants.  Make them public so they CAN be used by the calling OpMode
 
+    /*
+     * These two variables are used to control the velocity of the launcher motor.
+     * They are both in encoder ticks per second. The motors we use in the FIRST Tech Challenge
+     * have encoders with a resolution of 28 ticks per revolution. We can convert this to RPM
+     * by dividing the value by 28, to get to revolutions per second, before multiplying by 60
+     * to get revolutions per minute.
+     * We pass the target velocity variable to our motor to set the goal. We use the min velocity
+     * in the launch() function to only run the windmill servo when the motor is spinning fast
+     * enough to make a successful throw.
+     */
     public final int LAUNCHER_TARGET_VELOCITY = 1250; //2678 RPM
     public final int LAUNCHER_MIN_VELOCITY = 1200; //2571 RPM
 
-    public static final double MID_SERVO       =  0.5 ;
-    public static final double HAND_SPEED      =  0.02 ;  // sets rate to move servo
-    public static final double ARM_UP_POWER    =  0.45 ;
-    public static final double ARM_DOWN_POWER  = -0.45 ;
 
+    /*
+     * These four variables store the power we need to apply to the motors. In other cases, we may
+     * choose to declare these variables inside the mecanumDrive() function, instead we declare them
+     * here so that we can access them in our main loop for telemetry.
+     */
     double leftFrontPower;
     double rightFrontPower;
     double leftBackPower;
@@ -107,7 +118,8 @@ public class BioBuzzHardware {
      * <p>
      * All of the hardware devices are accessed via the hardware map, and initialized.
      */
-    public void init()    {
+
+    public void init() {
         // Define and Initialize Motors (note: need to use reference to actual OpMode).
         leftFrontDrive = myOpMode.hardwareMap.get(DcMotor.class, "left_front_drive");
         rightFrontDrive = myOpMode.hardwareMap.get(DcMotor.class, "right_front_drive");
@@ -168,85 +180,17 @@ public class BioBuzzHardware {
         myOpMode.telemetry.update();
     }
 
-    /*
-     * Code to run REPEATEDLY after the driver hits INIT, but before they hit START
-     */
 
-    public void init_loop() {
-    }
 
-    /*
-     * Code to run ONCE when the driver hits START
-     */
-    public void start() {
-    }
 
-    /*
-     * Code to run REPEATEDLY after the driver hits START but before they hit STOP
-     */
 
-    public void loop() {
-        /*
-         * Here we call a function called mecanumDrive. The mecanumDrive function takes the input from
-         * the joysticks, and applies power to the drive motors to move the robot as requested
-         * by the driver. Moving the left joystick forwards/back moves all motors forwards/back,
-         * moving the right joystick left/right rotates the robot clockwise or counterclockwise,
-         * and moving the left joystick left moves the motors in the right way to create a sideways
-         * "strafe" movement. Combinations of these inputs can be used to create more complex maneuvers.
-         * Note, moving the joystick forward on most gamepads results in a negative signal, so
-         * we invert it before passing it to the function.
-         */
-        mecanumDrive(-myOpMode.gamepad1.left_stick_y, myOpMode.gamepad1.left_stick_x, myOpMode.gamepad1.right_stick_x);
-
-        /*
-         * Set the intake power variable to equal the right trigger, minus the left trigger.
-         * Each trigger outputs a signal from 0-1, with 0 as fully released, and 1 fully depressed.
-         * This gives us proportional control of the intake speed. The speed increases as we pull
-         * the right trigger further. It's occasionally helpful to be able to reverse the intake,
-         * so we also factor in the left trigger. If the left trigger is fully depressed,
-         * the intakePower variable will be -1. If the right trigger is fully depressed, the variable
-         * will be 1. If the driver pulls both triggers, the intake will remain off.
-         * We use this technique (creating a variable, and setting it to our control inputs) to
-         * allow us to avoid setting the same motors/servos power more than once per loop. That can
-         * create erratic behavior.
-         */
-        intakePower = myOpMode.gamepad1.right_trigger - myOpMode.gamepad1.left_trigger;
-
-        launch();
-
-        /*
-         * Here we set our intake motor and servos to their intake power. The order of operations
-         * here is important though. The gamepad triggers define the starting point for the intake
-         * power variable in each loop of our code, but inside our launch function we also sometimes
-         * change the intake power. So we need to give our launch function a chance to modify the
-         * variable before we write it to our motor and servos.
-         */
-
-        intake.setPower(intakePower);
-        leftIntakeServo.setPower(intakePower);
-        rightIntakeServo.setPower(intakePower);
-
-        /*
-         * Show motor powers on the Driver Station via telemetry.
-         */
-        myOpMode.telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftFrontPower, rightFrontPower);
-        myOpMode.telemetry.addData("Triggers", "left (%.2f, right (%.2f)",myOpMode.gamepad1.left_trigger, myOpMode.gamepad1.right_trigger);
-    }
-
-    /*
-     * Code to run ONCE after the driver hits STOP
-     */
-
-    public void stop() {
     /*
      * Calculates the left/right motor powers required to achieve the requested
      * robot motions: Drive (Axial motion) and Turn (Yaw motion).
      * Then sends these power levels to the motors.
-     *
-     * @param Drive     Fwd/Rev driving power (-1.0 to 1.0) +ve is forward
-     * @param Turn      Right/Left turning power (-1.0 to 1.0) +ve is CW
      */
-    public void mecanumDrive(double forward, double strafe, double rotate) {
+
+    void mecanumDrive(double forward, double strafe, double rotate) {
         leftFrontPower = forward + strafe + rotate;
         rightFrontPower = forward - strafe - rotate;
         leftBackPower = forward - strafe + rotate;
@@ -261,6 +205,7 @@ public class BioBuzzHardware {
             rightFrontPower /= max;
             leftBackPower /= max;
             rightBackPower /= max;
+
         }
 
         /*
@@ -270,8 +215,14 @@ public class BioBuzzHardware {
         rightFrontDrive.setPower(rightFrontPower);
         leftBackDrive.setPower(leftBackPower);
         rightBackDrive.setPower(rightBackPower);
+        /*
+         * Show motor powers on the Driver Station via telemetry.
+         */
+        myOpMode.telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftFrontPower, rightFrontPower);
+        myOpMode.telemetry.addData("Triggers", "left (%.2f, right (%.2f)", myOpMode.gamepad1.left_trigger, myOpMode.gamepad1.right_trigger);
     }
-    void launch() {
+
+    void launch(boolean doLaunch) {
         /*
          * Calling gamepad1.right_bumper returns a boolean which will be true if the bumper is
          * held down, and false if it is not. Notably, this will continue to be true for every
@@ -280,7 +231,7 @@ public class BioBuzzHardware {
          * holding down the right gamepad. If they are, then we want to start spinning up the launcher.
          * Otherwise, we start spinning the launcher down.
          */
-        if (myOpMode.gamepad1.right_bumper) {
+        if (doLaunch) {
             launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
         } else {
             launcher.setVelocity(0);
@@ -300,37 +251,18 @@ public class BioBuzzHardware {
             windmillServo.setPower(0);
         }
     }
-}
 
+    public void setIntakePower(double intakePower) {
 
-
-    /**
-     * Pass the requested wheel motor powers to the appropriate hardware drive motors.
-     *
-     * @param leftWheel     Fwd/Rev driving power (-1.0 to 1.0) +ve is forward
-     * @param rightWheel    Fwd/Rev driving power (-1.0 to 1.0) +ve is forward
-     */
-    public void setDrivePower(double leftWheel, double rightWheel) {
-        // Output the values to the motor drives.
-
-    }
-
-    /**
-     * Pass the requested arm power to the appropriate hardware drive motor
-     *
-     * @param power driving power (-1.0 to 1.0)
-     */
-    public void setArmPower(double power) {
-
-    }
-
-    /**
-     * Send the two hand-servos to opposing (mirrored) positions, based on the passed offset.
-     *
-     * @param offset
-     */
-    public void setHandPositions(double offset) {
-        offset = Range.clip(offset, -0.5, 0.5);
-
+        /*
+         * Here we set our intake motor and servos to their intake power. The order of operations
+         * here is important though. The gamepad triggers define the starting point for the intake
+         * power variable in each loop of our code, but inside our launch function we also sometimes
+         * change the intake power. So we need to give our launch function a chance to modify the
+         * variable before we write it to our motor and servos.
+         */
+        intake.setPower(intakePower);
+        leftIntakeServo.setPower(intakePower);
+        rightIntakeServo.setPower(intakePower);
     }
 }
